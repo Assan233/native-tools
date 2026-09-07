@@ -7,60 +7,71 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.Button
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.zyb.nativetools.features.meiyou.AutomationSnapshot
+import com.zyb.nativetools.features.meiyou.AutomationStatus
+import com.zyb.nativetools.features.meiyou.MeiyouAutomationController
 import com.zyb.nativetools.ui.theme.NativeToolsTheme
 
 class MainActivity : ComponentActivity() {
+    private var automationSnapshot by mutableStateOf(AutomationSnapshot())
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        automationSnapshot = MeiyouAutomationController.snapshot(this)
         setContent {
             NativeToolsTheme {
-                ToolsScreen()
+                ToolsScreen(
+                    automationSnapshot = automationSnapshot,
+                    onEnableAccessibility = {
+                        MeiyouAutomationController.openAccessibilitySettings(this)
+                    },
+                    onStart = {
+                        MeiyouAutomationController.start(this)
+                        automationSnapshot = MeiyouAutomationController.snapshot(this)
+                    },
+                    onStop = {
+                        MeiyouAutomationController.stop(this)
+                        automationSnapshot = MeiyouAutomationController.snapshot(this)
+                    },
+                )
             }
         }
     }
+
+    override fun onResume() {
+        super.onResume()
+        automationSnapshot = MeiyouAutomationController.snapshot(this)
+    }
 }
 
-private data class ToolItem(
-    val name: String,
-    val description: String,
-    val status: String,
-)
-
-private val tools = listOf(
-    ToolItem(
-        name = "自动点击脚本",
-        description = "通过可配置步骤减少重复操作",
-        status = "规划中",
-    ),
-    ToolItem(
-        name = "更多效率工具",
-        description = "从真实的日常需求逐步添加",
-        status = "待添加",
-    ),
-)
-
 @Composable
-private fun ToolsScreen(modifier: Modifier = Modifier) {
+private fun ToolsScreen(
+    automationSnapshot: AutomationSnapshot,
+    onEnableAccessibility: () -> Unit,
+    onStart: () -> Unit,
+    onStop: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Scaffold(modifier = modifier.fillMaxSize()) { innerPadding ->
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
@@ -75,67 +86,110 @@ private fun ToolsScreen(modifier: Modifier = Modifier) {
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(
-                        text = "Native Tools",
+                        text = stringResource(R.string.home_title),
                         style = MaterialTheme.typography.headlineLarge,
                         fontWeight = FontWeight.Bold,
                     )
                     Text(
-                        text = "把重复操作变成简单、可靠的小工具。",
+                        text = stringResource(R.string.home_subtitle),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         style = MaterialTheme.typography.bodyLarge,
                     )
                 }
             }
 
-            items(tools, key = ToolItem::name) { tool ->
-                ToolCard(tool = tool)
+            item {
+                MeiyouToolCard(
+                    snapshot = automationSnapshot,
+                    onEnableAccessibility = onEnableAccessibility,
+                    onStart = onStart,
+                    onStop = onStop,
+                )
             }
         }
     }
 }
 
 @Composable
-private fun ToolCard(tool: ToolItem, modifier: Modifier = Modifier) {
+private fun MeiyouToolCard(
+    snapshot: AutomationSnapshot,
+    onEnableAccessibility: () -> Unit,
+    onStart: () -> Unit,
+    onStop: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     ElevatedCard(modifier = modifier.fillMaxWidth()) {
-        Row(
+        Column(
             modifier = Modifier.padding(18.dp),
-            verticalAlignment = Alignment.CenterVertically,
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
+            Text(
+                text = stringResource(R.string.meiyou_title),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                text = stringResource(R.string.meiyou_description),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            Text(
+                text = automationStatusText(snapshot),
+                color = MaterialTheme.colorScheme.primary,
+                style = MaterialTheme.typography.labelLarge,
+            )
+
+            if (!snapshot.accessibilityEnabled) {
+                Button(onClick = onEnableAccessibility) {
+                    Text(stringResource(R.string.enable_accessibility))
+                }
                 Text(
-                    text = tool.name,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                )
-                Text(
-                    text = tool.description,
+                    text = stringResource(R.string.accessibility_explanation),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodySmall,
                 )
+            } else {
+                Button(
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = onStart,
+                    enabled = snapshot.status != AutomationStatus.RUNNING,
+                ) {
+                    Text(stringResource(R.string.start_meiyou_record))
+                }
             }
-            Spacer(modifier = Modifier.width(16.dp))
-            Surface(
-                color = MaterialTheme.colorScheme.secondaryContainer,
-                shape = MaterialTheme.shapes.small,
-            ) {
-                Text(
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                    text = tool.status,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer,
-                    style = MaterialTheme.typography.labelMedium,
-                )
+
+            if (snapshot.status == AutomationStatus.RUNNING) {
+                OutlinedButton(
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = onStop,
+                ) {
+                    Text(stringResource(R.string.stop_automation))
+                }
             }
         }
     }
+}
+
+@Composable
+private fun automationStatusText(snapshot: AutomationSnapshot): String = when {
+    !snapshot.accessibilityEnabled -> stringResource(R.string.status_permission_required)
+    snapshot.status == AutomationStatus.RUNNING -> stringResource(R.string.status_running)
+    snapshot.status == AutomationStatus.READY -> stringResource(R.string.status_ready)
+    snapshot.status == AutomationStatus.APP_NOT_INSTALLED -> stringResource(R.string.status_app_missing)
+    snapshot.status == AutomationStatus.PAGE_NOT_FOUND -> stringResource(R.string.status_page_not_found)
+    snapshot.status == AutomationStatus.STOPPED -> stringResource(R.string.status_stopped)
+    else -> stringResource(R.string.status_ready_to_start)
 }
 
 @Preview(showBackground = true)
 @Composable
 private fun ToolsScreenPreview() {
     NativeToolsTheme {
-        ToolsScreen()
+        ToolsScreen(
+            automationSnapshot = AutomationSnapshot(),
+            onEnableAccessibility = {},
+            onStart = {},
+            onStop = {},
+        )
     }
 }
