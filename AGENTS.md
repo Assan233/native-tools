@@ -1,55 +1,57 @@
-# Agent Instructions
+# Agent 开发说明
 
-## Project Context
+## 项目背景
 
-- This repository is a personal Android native toolkit for automating repetitive phone tasks and improving daily efficiency.
-- The maintainer is an experienced frontend developer but is not yet familiar with Android native development.
-- Use Kotlin and Jetpack Compose unless an existing feature has a concrete reason to use another approach.
-- The app currently supports Android 8.0+ (`minSdk = 26`) and targets Android 14 (`targetSdk = 34`).
+- 本仓库是个人 Android 原生工具集，用于自动化重复的手机操作，提高日常使用效率。
+- 项目维护者是有经验的前端开发者，但目前不熟悉 Android Native 开发。
+- 除非现有功能有明确理由采用其他方案，否则统一使用 Kotlin 和 Jetpack Compose。
+- 应用当前支持 Android 8.0 及以上版本（`minSdk = 26`），目标版本为 Android 14（`targetSdk = 34`）。
 
-## Communication
+## 沟通要求
 
-- Explain Android-specific concepts, lifecycle implications, permissions, and system constraints in frontend terms where that helps.
-- Do not assume knowledge of Gradle, Activities, Services, Intents, Binder, lifecycle, or Android permission models.
-- Keep explanations concise and practical. Include the exact file and command relevant to the change.
-- When multiple native approaches are valid, recommend one and state the tradeoff rather than presenting an unexplained choice.
-- Explicitly call out steps that must be completed in Android Studio, on an emulator, or on a physical device.
+- 在有帮助时，使用前端概念类比解释 Android 特有概念、生命周期、权限和系统限制。
+- 不得默认维护者熟悉 Gradle、Activity、Service、Intent、Binder、生命周期或 Android 权限模型。
+- 解释应简洁、实用，并给出改动涉及的准确文件和命令。
+- 存在多个可行的 Native 方案时，应推荐其中一个并说明取舍，不要只罗列选项。
+- 明确指出哪些步骤必须在 Android Studio、模拟器或真机上完成。
+- Agent 与用户沟通时使用中文；代码标识符、官方术语和命令可保留英文。
 
-## Engineering Rules
+## 工程规范
 
-- Follow the Kotlin coding conventions and Android's official architecture guidance.
-- Prefer the smallest correct implementation. Do not introduce layers, modules, interfaces, or dependencies without a current need.
-- Use Compose with unidirectional data flow. Hoist state when it must be shared or controlled by a caller.
-- Keep UI, state coordination, domain logic, and Android system integration separate once a feature is large enough to benefit from those boundaries.
-- Use `ViewModel` and `StateFlow` for non-trivial screen state. Do not store durable state only in an `Activity`, `Service`, or Composable.
-- Use structured concurrency with Kotlin Coroutines. Never block the main thread with network, file, database, shell, or long-running work.
-- Prefer immutable data and explicit state models. Avoid global mutable state and singleton service locators.
-- Put user-visible text in Android string resources. Add accessibility semantics or content descriptions to interactive UI where needed.
-- Handle configuration changes, process recreation, denied or revoked permissions, and unavailable system services when relevant.
-- Add unit tests for business logic and focused instrumentation tests for critical Android integrations.
-- Run `./gradlew test lint assembleDebug` after meaningful changes when the local environment allows it.
+- 遵循 Kotlin 官方编码规范和 Android 官方架构指南。
+- 优先采用最小且正确的实现。没有当前需求时，不引入额外分层、模块、接口或依赖。
+- Compose 使用单向数据流；状态需要共享或由调用方控制时，应进行状态提升。
+- 当功能复杂度确实需要时，再分离 UI、状态协调、领域逻辑和 Android 系统集成。
+- 非简单页面状态使用 `ViewModel` 和 `StateFlow`。不得仅在 `Activity`、`Service` 或 Composable 中保存持久状态。
+- 使用 Kotlin Coroutines 实现结构化并发。不得在主线程执行网络、文件、数据库、Shell 或其他耗时操作。
+- 优先使用不可变数据和明确的状态模型，避免全局可变状态和单例 Service Locator。
+- 用户可见文案放在 Android 字符串资源中。交互元素按需提供无障碍语义或内容描述。
+- 相关功能必须考虑配置变更、进程重建、权限被拒绝或撤销，以及系统服务不可用等情况。
+- 业务逻辑应添加单元测试，关键 Android 系统集成应添加有针对性的仪器测试。
+- 完成有意义的改动后，在本地环境允许时运行 `./gradlew test lint assembleDebug`。
 
-## Automation And Permissions
+## 自动化与权限
 
-- Treat Accessibility Service, notification access, overlays, screen capture, background execution, and device administration as sensitive capabilities.
-- Never add a sensitive permission or special service silently. Explain why it is required, its user-visible impact, and a lower-privilege alternative if one exists.
-- Automation must be user-initiated, visibly active, cancellable, and bounded. It must fail safely when the target UI differs from expectations.
-- Prefer semantic selectors such as package name, view ID, text, and content description over fixed screen coordinates.
-- Do not automate payments, passwords, one-time codes, account security flows, or bypass platform protections.
-- Keep private on-device data local unless the user explicitly requests networking and understands what will be transmitted.
-- Do not use hidden APIs, root-only behavior, or ADB as an in-app production dependency unless the task explicitly requires a development-only tool and documents the limitation.
+- 将无障碍服务、通知访问、悬浮窗、屏幕捕获、后台运行和设备管理视为敏感能力。
+- 不得静默增加敏感权限或特殊 Service。必须说明用途、用户可见影响，以及权限更小的替代方案。
+- 自动化必须由用户主动启动、运行状态清晰可见、能够随时取消，并且有明确执行边界。
+- 当目标界面与预期不一致时，自动化必须安全停止，不能继续盲目操作。
+- 优先使用包名、View ID、文本和内容描述等语义选择器，不优先依赖固定屏幕坐标。
+- 不得自动化支付、密码、一次性验证码、账号安全流程，也不得绕过平台保护机制。
+- 除非用户明确要求联网并了解传输内容，否则设备上的私人数据必须只保存在本地。
+- 除非任务明确属于开发期工具并记录其限制，否则不得把隐藏 API、Root 能力或 ADB 作为应用生产功能的依赖。
 
-## Dependencies And Build
+## 依赖与构建
 
-- Manage dependency and plugin versions in `gradle/libs.versions.toml`.
-- Prefer AndroidX and actively maintained official libraries. Justify every new third-party dependency.
-- Never commit `local.properties`, signing keys, API keys, tokens, device identifiers, or generated build output.
-- Keep Debug and Release behavior aligned unless a difference is intentional and documented.
-- Do not raise `minSdk`, `targetSdk`, `compileSdk`, AGP, Gradle, Kotlin, or Java versions as a side effect of an unrelated change.
+- 依赖和插件版本统一在 `gradle/libs.versions.toml` 中管理。
+- 优先使用 AndroidX 和持续维护的官方库。每个新增第三方依赖都需要说明理由。
+- 不得提交 `local.properties`、签名文件、API Key、Token、设备标识或生成的构建产物。
+- 除非差异是有意设计并已记录，否则 Debug 与 Release 行为应保持一致。
+- 不得在无关改动中顺带升级 `minSdk`、`targetSdk`、`compileSdk`、AGP、Gradle、Kotlin 或 Java 版本。
 
-## Feature Organization
+## 功能组织
 
-- Keep the single `app` module until build time, ownership, or reuse creates a concrete reason to split it.
-- Group growing code by feature, for example `features/autoclick/`, rather than by generic technical buckets alone.
-- A typical non-trivial feature may contain a screen, a `ViewModel`, immutable UI state/events, and a repository or Android integration class. Omit any part that does not add value.
-- Document manual setup and device-specific verification for system integrations in `README.md` or `docs/`.
+- 保持单 `app` 模块，直到构建时间、所有权边界或代码复用产生明确的拆分需求。
+- 功能增长后按业务功能组织代码，例如 `features/autoclick/`，不要只按通用技术类型分包。
+- 一个非简单功能通常可以包含 Screen、`ViewModel`、不可变 UI 状态/事件，以及 Repository 或 Android 系统集成类；不增加没有实际价值的部分。
+- 系统集成所需的手动设置和真机验证步骤应记录在 `README.md` 或 `docs/` 中。
