@@ -1,0 +1,19 @@
+AGENTS.md
+  s_af01dc23f72294::t_195d70854c4e17 1-57
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "d484b8c121383e37e80ea987870cb1594c1bd262",
+  "prompts": {},
+  "sessions": {
+    "s_af01dc23f72294": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f852aa9dbffetHTEfjUMWqd2Io",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "caorongsen <caorongsen@zuoyebang.com>"
+    }
+  }
+}
