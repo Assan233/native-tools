@@ -1,19 +1,24 @@
 package com.zyb.nativetools.features.meiyou
 
 import android.accessibilityservice.AccessibilityService
-import android.os.Bundle
+import android.graphics.Rect
 import android.os.Handler
 import android.os.Looper
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import android.widget.Toast
 import com.zyb.nativetools.R
+import kotlin.math.abs
+import kotlin.math.roundToInt
 
 class MeiyouAccessibilityService : AccessibilityService() {
     private val handler = Handler(Looper.getMainLooper())
-    private var amountPageReached = false
+    private var currentStep = AutomationStep.FEEDING_RECORD
     private var activeRunStartedAt = 0L
     private var lastActionAt = 0L
+    private var amountScrollCount = 0
+
+    private val processWindow = Runnable { processCurrentWindow() }
 
     private val timeout = Runnable {
         if (MeiyouAutomationController.readStatus(this) == AutomationStatus.RUNNING) {
@@ -28,8 +33,9 @@ class MeiyouAccessibilityService : AccessibilityService() {
         val startedAt = MeiyouAutomationController.startedAt(this)
         if (startedAt != activeRunStartedAt) {
             activeRunStartedAt = startedAt
-            amountPageReached = false
+            currentStep = AutomationStep.FEEDING_RECORD
             lastActionAt = 0L
+            amountScrollCount = 0
         }
         val elapsed = System.currentTimeMillis() - startedAt
         if (elapsed >= TIMEOUT_MILLIS) {
@@ -39,18 +45,29 @@ class MeiyouAccessibilityService : AccessibilityService() {
 
         handler.removeCallbacks(timeout)
         handler.postDelayed(timeout, TIMEOUT_MILLIS - elapsed)
-        if (System.currentTimeMillis() - lastActionAt < ACTION_DEBOUNCE_MILLIS) return
+        handler.removeCallbacks(processWindow)
+        handler.postDelayed(processWindow, CONTENT_SETTLE_MILLIS)
+    }
+
+    private fun processCurrentWindow() {
+        if (MeiyouAutomationController.readStatus(this) != AutomationStatus.RUNNING) return
+        if (System.currentTimeMillis() - lastActionAt < ACTION_DEBOUNCE_MILLIS) {
+            scheduleProcess(ACTION_DEBOUNCE_MILLIS)
+            return
+        }
 
         val root = rootInActiveWindow ?: return
-        if (amountPageReached) {
-            fillAmount(root)
-        } else {
-            navigate(root)
+        when (currentStep) {
+            AutomationStep.FEEDING_RECORD,
+            AutomationStep.BOTTLE_BREAST_MILK,
+            -> navigate(root)
+            AutomationStep.MILK_AMOUNT -> adjustAmount(root)
         }
     }
 
     override fun onInterrupt() {
         handler.removeCallbacks(timeout)
+        handler.removeCallbacks(processWindow)
         if (MeiyouAutomationController.readStatus(this) == AutomationStatus.RUNNING) {
             MeiyouAutomationController.updateStatus(this, AutomationStatus.STOPPED)
         }
@@ -58,61 +75,108 @@ class MeiyouAccessibilityService : AccessibilityService() {
 
     override fun onDestroy() {
         handler.removeCallbacks(timeout)
+        handler.removeCallbacks(processWindow)
         super.onDestroy()
     }
 
     private fun navigate(root: AccessibilityNodeInfo) {
-        val nodes = root.flatten()
-        val action = MeiyouAutomationRules.nextAction(nodes.mapNotNull { it.nodeLabel() })
-            ?: return
+        val nodes = root.flatten().filter(AccessibilityNodeInfo::isVisibleToUser)
+        val targetLabel = MeiyouAutomationRules.targetLabel(
+            currentStep,
+            nodes.mapNotNull { it.nodeLabel() },
+        ) ?: return
         val target = nodes.firstOrNull { node ->
             val label = node.nodeLabel() ?: return@firstOrNull false
-            action.labels.any { candidate ->
-                MeiyouAutomationRules.normalize(label) == MeiyouAutomationRules.normalize(candidate)
-            }
+            MeiyouAutomationRules.normalize(label) == MeiyouAutomationRules.normalize(targetLabel)
         } ?: return
 
         if (target.click()) {
             lastActionAt = System.currentTimeMillis()
-            if (action == NavigationAction.BOTTLE_BREAST_MILK) {
-                amountPageReached = true
+            currentStep = when (currentStep) {
+                AutomationStep.FEEDING_RECORD -> AutomationStep.BOTTLE_BREAST_MILK
+                AutomationStep.BOTTLE_BREAST_MILK -> AutomationStep.MILK_AMOUNT
+                AutomationStep.MILK_AMOUNT -> AutomationStep.MILK_AMOUNT
             }
+            scheduleProcess(PAGE_LOAD_WAIT_MILLIS)
         }
     }
 
-    private fun fillAmount(root: AccessibilityNodeInfo) {
-        val nodes = root.flatten()
-        val presetLabels = listOf("150", "150ml", "150 ml", "150毫升")
-        val preset = nodes.firstOrNull { node ->
-            val label = node.nodeLabel() ?: return@firstOrNull false
-            presetLabels.any { MeiyouAutomationRules.normalize(it) == MeiyouAutomationRules.normalize(label) }
-        }
-        if (preset?.click() == true) {
+    private fun adjustAmount(root: AccessibilityNodeInfo) {
+        val nodes = root.flatten().filter(AccessibilityNodeInfo::isVisibleToUser)
+        val amountLabel = nodes.firstOrNull { node ->
+            node.nodeLabel()?.let { MeiyouAutomationRules.targetLabel(currentStep, listOf(it)) } != null
+        } ?: return
+        val picker = findAmountPicker(amountLabel, nodes) ?: return
+        val currentAmount = picker.currentAmount() ?: return
+
+        val adjustment = MeiyouAutomationRules.amountAdjustment(
+            currentAmount,
+            MeiyouAutomationController.DEFAULT_MILK_ML,
+        )
+        if (adjustment == AmountAdjustment.DONE) {
             finish(AutomationStatus.READY, R.string.automation_ready_toast)
             return
         }
 
-        val editableNodes = nodes.filter { node ->
-            node.isVisibleToUser &&
-                (node.isEditable || node.actionList.any { it.id == AccessibilityNodeInfo.ACTION_SET_TEXT })
+        if (amountScrollCount >= MAX_AMOUNT_SCROLLS) return
+        val action = when (adjustment) {
+            AmountAdjustment.SCROLL_FORWARD -> AccessibilityNodeInfo.ACTION_SCROLL_FORWARD
+            AmountAdjustment.SCROLL_BACKWARD -> AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD
+            AmountAdjustment.DONE -> return
         }
-        val amountInput = editableNodes.firstOrNull { it.looksLikeAmountInput() }
-            ?: editableNodes.singleOrNull()
-            ?: return
-        val arguments = Bundle().apply {
-            putCharSequence(
-                AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE,
-                MeiyouAutomationController.DEFAULT_MILK_ML.toString(),
-            )
+        if (picker.performAction(action)) {
+            amountScrollCount += 1
+            lastActionAt = System.currentTimeMillis()
+            scheduleProcess(PICKER_SETTLE_MILLIS)
         }
-        if (amountInput.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, arguments)) {
-            finish(AutomationStatus.READY, R.string.automation_ready_toast)
+    }
+
+    private fun findAmountPicker(
+        amountLabel: AccessibilityNodeInfo,
+        visibleNodes: List<AccessibilityNodeInfo>,
+    ): AccessibilityNodeInfo? {
+        var container: AccessibilityNodeInfo? = amountLabel.parent
+        repeat(MAX_ANCESTOR_SEARCH_DEPTH) {
+            val localPicker = container
+                ?.flatten()
+                ?.filter(AccessibilityNodeInfo::isVisibleToUser)
+                ?.filter { it.supportsAmountScroll() }
+                ?.minByOrNull { it.distanceFrom(amountLabel) }
+            if (localPicker != null) return localPicker
+            container = container?.parent
         }
+        return visibleNodes
+            .filter { it.supportsAmountScroll() }
+            .minByOrNull { it.distanceFrom(amountLabel) }
+    }
+
+    private fun AccessibilityNodeInfo.currentAmount(): Int? {
+        rangeInfo?.current?.roundToInt()?.let { return it }
+        nodeLabel()?.let(MeiyouAutomationRules::parseAmount)?.let { return it }
+        flatten()
+            .filter(AccessibilityNodeInfo::isVisibleToUser)
+            .firstOrNull { it.isSelected }
+            ?.nodeLabel()
+            ?.let(MeiyouAutomationRules::parseAmount)
+            ?.let { return it }
+
+        val pickerBounds = Rect().also(::getBoundsInScreen)
+        return flatten()
+            .filter(AccessibilityNodeInfo::isVisibleToUser)
+            .mapNotNull { node ->
+                val value = node.nodeLabel()?.let(MeiyouAutomationRules::parseAmount)
+                    ?: return@mapNotNull null
+                val bounds = Rect().also(node::getBoundsInScreen)
+                value to abs(bounds.centerY() - pickerBounds.centerY())
+            }
+            .minByOrNull { (_, distance) -> distance }
+            ?.first
     }
 
     private fun finish(status: AutomationStatus, messageResource: Int) {
         handler.removeCallbacks(timeout)
-        amountPageReached = false
+        handler.removeCallbacks(processWindow)
+        currentStep = AutomationStep.FEEDING_RECORD
         MeiyouAutomationController.updateStatus(this, status)
         Toast.makeText(this, messageResource, Toast.LENGTH_LONG).show()
     }
@@ -142,15 +206,31 @@ class MeiyouAccessibilityService : AccessibilityService() {
         return false
     }
 
-    private fun AccessibilityNodeInfo.looksLikeAmountInput(): Boolean {
-        val searchable = listOfNotNull(text, hintText, contentDescription, viewIdResourceName)
-            .joinToString(separator = " ")
-            .lowercase()
-        return listOf("ml", "毫升", "奶量", "amount", "volume").any(searchable::contains)
+    private fun AccessibilityNodeInfo.supportsAmountScroll(): Boolean =
+        isScrollable || actionList.any { action ->
+            action.id == AccessibilityNodeInfo.ACTION_SCROLL_FORWARD ||
+                action.id == AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD
+        }
+
+    private fun AccessibilityNodeInfo.distanceFrom(other: AccessibilityNodeInfo): Int {
+        val bounds = Rect().also(::getBoundsInScreen)
+        val otherBounds = Rect().also(other::getBoundsInScreen)
+        return abs(bounds.centerX() - otherBounds.centerX()) +
+            abs(bounds.centerY() - otherBounds.centerY())
+    }
+
+    private fun scheduleProcess(delayMillis: Long) {
+        handler.removeCallbacks(processWindow)
+        handler.postDelayed(processWindow, delayMillis)
     }
 
     private companion object {
-        const val TIMEOUT_MILLIS = 20_000L
-        const val ACTION_DEBOUNCE_MILLIS = 500L
+        const val TIMEOUT_MILLIS = 60_000L
+        const val CONTENT_SETTLE_MILLIS = 350L
+        const val PAGE_LOAD_WAIT_MILLIS = 1_000L
+        const val PICKER_SETTLE_MILLIS = 450L
+        const val ACTION_DEBOUNCE_MILLIS = 400L
+        const val MAX_AMOUNT_SCROLLS = 40
+        const val MAX_ANCESTOR_SEARCH_DEPTH = 4
     }
 }
