@@ -1,0 +1,31 @@
+app/src/main/java/com/zyb/nativetools/features/meiyou/MeiyouAutomationRules.kt
+  s_af01dc23f72294::t_2457fbb3c7f89d 6
+app/src/main/res/xml/meiyou_accessibility_service.xml
+  s_af01dc23f72294::t_2457fbb3c7f89d 3
+app/src/main/java/com/zyb/nativetools/features/meiyou/MeiyouAutomationController.kt
+  s_af01dc23f72294::t_6fc040ed266038 77,83-93,98-118
+app/src/test/java/com/zyb/nativetools/features/meiyou/MeiyouAutomationControllerTest.kt
+  s_af01dc23f72294::t_6fc040ed266038 1-49
+app/src/main/java/com/zyb/nativetools/features/meiyou/MeiyouAccessibilityService.kt
+  s_af01dc23f72294::t_2457fbb3c7f89d 5,62,102,107-112,114-115,119-121,124,127,129,132,168-169
+app/src/test/java/com/zyb/nativetools/features/meiyou/MeiyouAutomationRulesTest.kt
+  s_af01dc23f72294::t_2457fbb3c7f89d 44,46-50,53-57
+README.md
+  s_af01dc23f72294::t_2457fbb3c7f89d 76,79
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "38fd3762b499a12bd3e8331b3b5f6abcbca16e1f",
+  "prompts": {},
+  "sessions": {
+    "s_af01dc23f72294": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f852aa9dbffetHTEfjUMWqd2Io",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "caorongsen <caorongsen@zuoyebang.com>"
+    }
+  }
+}
