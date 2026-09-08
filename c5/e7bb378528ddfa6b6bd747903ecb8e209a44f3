@@ -1,0 +1,26 @@
+app/src/main/java/com/zyb/nativetools/ui/theme/Color.kt
+  s_af01dc23f72294::t_8ddd9bbf22edc0 5-14
+app/src/main/java/com/zyb/nativetools/ui/theme/Theme.kt
+  s_af01dc23f72294::t_f817973be4a495 34
+  s_af01dc23f72294::t_8ddd9bbf22edc0 7,10-14,18-29,37
+app/src/main/java/com/zyb/nativetools/MainActivity.kt
+  s_af01dc23f72294::t_8ddd9bbf22edc0 7-8,10,12-15,18-19,21-27,29-30,32,40,42-48,53,100-119,121-144,146-161,164,177-214,219,221-223,225-234,238-254,256-272,278-407,419,422,424-427
+app/src/main/res/values/strings.xml
+  s_af01dc23f72294::t_8ddd9bbf22edc0 3-5,7-12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "c5e7bb378528ddfa6b6bd747903ecb8e209a44f3",
+  "prompts": {},
+  "sessions": {
+    "s_af01dc23f72294": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f852aa9dbffetHTEfjUMWqd2Io",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "caorongsen <caorongsen@zuoyebang.com>"
+    }
+  }
+}
