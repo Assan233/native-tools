@@ -1,9 +1,15 @@
 <resources>
     <string name="app_name">Native Tools</string>
-    <string name="home_title">Native Tools</string>
-    <string name="home_subtitle">把重复操作变成简单、可靠的小工具。</string>
+    <string name="home_title">工具列表</string>
+    <string name="home_subtitle">1 个可用工具</string>
+    <string name="tool_automation_label">自动化</string>
     <string name="meiyou_title">美柚瓶喂母乳</string>
-    <string name="meiyou_description">打开美柚并进入瓶喂母乳记录，自动填写 150 ml。填写后请在美柚中确认并保存。</string>
+    <string name="meiyou_description">打开美柚，进入瓶喂母乳记录并填写奶量。完成后由你确认保存。</string>
+    <string name="default_amount_label">默认奶量</string>
+    <string name="default_amount_value">150 ml</string>
+    <string name="save_mode_label">保存方式</string>
+    <string name="save_mode_value">手动确认</string>
+    <string name="local_automation_note">自动化仅在设备本地运行，可随时停止</string>
     <string name="enable_accessibility">开启自动化权限</string>
     <string name="accessibility_explanation">需要在系统设置中手动开启 Native Tools。服务只能读取和操作美柚界面，可随时关闭。</string>
     <string name="start_meiyou_record">开始记录 150 ml</string>

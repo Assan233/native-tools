@@ -4,28 +4,53 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.zyb.nativetools.features.meiyou.AutomationSnapshot
 import com.zyb.nativetools.features.meiyou.AutomationStatus
 import com.zyb.nativetools.features.meiyou.MeiyouAutomationController
@@ -72,40 +97,71 @@ private fun ToolsScreen(
     onStop: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Scaffold(modifier = modifier.fillMaxSize()) { innerPadding ->
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(
-                start = 20.dp,
-                top = innerPadding.calculateTopPadding() + 24.dp,
-                end = 20.dp,
-                bottom = innerPadding.calculateBottomPadding() + 24.dp,
-            ),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            item {
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(
-                        text = stringResource(R.string.home_title),
-                        style = MaterialTheme.typography.headlineLarge,
-                        fontWeight = FontWeight.Bold,
-                    )
-                    Text(
-                        text = stringResource(R.string.home_subtitle),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        style = MaterialTheme.typography.bodyLarge,
-                    )
-                }
-            }
+    val background = MaterialTheme.colorScheme.background
 
-            item {
-                MeiyouToolCard(
-                    snapshot = automationSnapshot,
-                    onEnableAccessibility = onEnableAccessibility,
-                    onStart = onStart,
-                    onStop = onStop,
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .clipToBounds()
+            .background(background),
+    ) {
+        DecorativeRing(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .offset(x = 92.dp, y = (-108).dp),
+        )
+
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(WindowInsets.safeDrawing.asPaddingValues())
+                .padding(horizontal = 24.dp),
+        ) {
+            Spacer(Modifier.height(32.dp))
+            ToolListIcon()
+            Spacer(Modifier.height(24.dp))
+            Text(
+                text = stringResource(R.string.home_title),
+                color = MaterialTheme.colorScheme.onBackground,
+                fontSize = 34.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = (-0.8).sp,
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = stringResource(R.string.home_subtitle),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodyLarge,
+            )
+            Spacer(Modifier.height(30.dp))
+
+            MeiyouToolCard(
+                snapshot = automationSnapshot,
+                onEnableAccessibility = onEnableAccessibility,
+                onStart = onStart,
+                onStop = onStop,
+            )
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp, vertical = 22.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(7.dp)
+                        .background(MaterialTheme.colorScheme.primary, CircleShape),
+                )
+                Spacer(Modifier.width(10.dp))
+                Text(
+                    text = stringResource(R.string.local_automation_note),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodySmall,
                 )
             }
+            Spacer(Modifier.height(12.dp))
         }
     }
 }
@@ -118,54 +174,233 @@ private fun MeiyouToolCard(
     onStop: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    ElevatedCard(modifier = modifier.fillMaxWidth()) {
-        Column(
-            modifier = Modifier.padding(18.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Text(
-                text = stringResource(R.string.meiyou_title),
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.SemiBold,
-            )
+    ElevatedCard(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = MaterialTheme.colorScheme.surface,
+        ),
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 5.dp),
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            Row(verticalAlignment = Alignment.Top) {
+                Box(
+                    modifier = Modifier
+                        .size(52.dp)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(MaterialTheme.colorScheme.primaryContainer),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    ClipboardIcon()
+                }
+                Spacer(Modifier.width(14.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = stringResource(R.string.tool_automation_label),
+                        color = MaterialTheme.colorScheme.primary,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Spacer(Modifier.height(3.dp))
+                    Text(
+                        text = stringResource(R.string.meiyou_title),
+                        color = MaterialTheme.colorScheme.onSurface,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(18.dp))
             Text(
                 text = stringResource(R.string.meiyou_description),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 style = MaterialTheme.typography.bodyMedium,
+                lineHeight = 21.sp,
             )
-            Text(
-                text = automationStatusText(snapshot),
-                color = MaterialTheme.colorScheme.primary,
-                style = MaterialTheme.typography.labelLarge,
-            )
+            Spacer(Modifier.height(18.dp))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            Spacer(Modifier.height(16.dp))
 
-            if (!snapshot.accessibilityEnabled) {
-                Button(onClick = onEnableAccessibility) {
-                    Text(stringResource(R.string.enable_accessibility))
-                }
-                Text(
-                    text = stringResource(R.string.accessibility_explanation),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    style = MaterialTheme.typography.bodySmall,
+            Row(modifier = Modifier.fillMaxWidth()) {
+                ToolMetric(
+                    label = stringResource(R.string.default_amount_label),
+                    value = stringResource(R.string.default_amount_value),
+                    modifier = Modifier.weight(1f),
                 )
-            } else {
-                Button(
-                    modifier = Modifier.fillMaxWidth(),
-                    onClick = onStart,
-                    enabled = snapshot.status != AutomationStatus.RUNNING,
-                ) {
-                    Text(stringResource(R.string.start_meiyou_record))
-                }
+                ToolMetric(
+                    label = stringResource(R.string.save_mode_label),
+                    value = stringResource(R.string.save_mode_value),
+                    modifier = Modifier.weight(1f),
+                )
             }
 
-            if (snapshot.status == AutomationStatus.RUNNING) {
-                OutlinedButton(
-                    modifier = Modifier.fillMaxWidth(),
-                    onClick = onStop,
-                ) {
-                    Text(stringResource(R.string.stop_automation))
+            Spacer(Modifier.height(18.dp))
+            StatusLine(snapshot)
+            Spacer(Modifier.height(18.dp))
+
+            when {
+                !snapshot.accessibilityEnabled -> {
+                    PrimaryActionButton(
+                        text = stringResource(R.string.enable_accessibility),
+                        onClick = onEnableAccessibility,
+                    )
+                    Spacer(Modifier.height(10.dp))
+                    Text(
+                        text = stringResource(R.string.accessibility_explanation),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodySmall,
+                        lineHeight = 18.sp,
+                    )
                 }
+
+                snapshot.status == AutomationStatus.RUNNING -> {
+                    OutlinedButton(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(52.dp),
+                        onClick = onStop,
+                        shape = RoundedCornerShape(10.dp),
+                    ) {
+                        Text(stringResource(R.string.stop_automation))
+                    }
+                }
+
+                else -> PrimaryActionButton(
+                    text = stringResource(R.string.start_meiyou_record),
+                    onClick = onStart,
+                )
             }
+        }
+    }
+}
+
+@Composable
+private fun ToolMetric(
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier) {
+        Text(
+            text = label,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.labelMedium,
+        )
+        Spacer(Modifier.height(4.dp))
+        Text(
+            text = value,
+            color = MaterialTheme.colorScheme.onSurface,
+            style = MaterialTheme.typography.bodyLarge,
+            fontWeight = FontWeight.Medium,
+        )
+    }
+}
+
+@Composable
+private fun StatusLine(snapshot: AutomationSnapshot) {
+    val statusColor = when {
+        !snapshot.accessibilityEnabled -> MaterialTheme.colorScheme.tertiary
+        snapshot.status == AutomationStatus.APP_NOT_INSTALLED -> MaterialTheme.colorScheme.error
+        snapshot.status == AutomationStatus.PAGE_NOT_FOUND -> MaterialTheme.colorScheme.error
+        snapshot.status == AutomationStatus.STOPPED -> MaterialTheme.colorScheme.onSurfaceVariant
+        else -> MaterialTheme.colorScheme.primary
+    }
+
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            modifier = Modifier
+                .size(8.dp)
+                .background(statusColor, CircleShape),
+        )
+        Spacer(Modifier.width(9.dp))
+        Text(
+            text = automationStatusText(snapshot),
+            color = statusColor,
+            style = MaterialTheme.typography.labelLarge,
+        )
+    }
+}
+
+@Composable
+private fun PrimaryActionButton(
+    text: String,
+    onClick: () -> Unit,
+) {
+    Button(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(52.dp),
+        onClick = onClick,
+        shape = RoundedCornerShape(10.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = MaterialTheme.colorScheme.primary,
+            contentColor = MaterialTheme.colorScheme.onPrimary,
+        ),
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.Medium,
+        )
+    }
+}
+
+@Composable
+private fun DecorativeRing(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .size(230.dp)
+            .background(MaterialTheme.colorScheme.primary, CircleShape),
+        contentAlignment = Alignment.Center,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(124.dp)
+                .background(MaterialTheme.colorScheme.background, CircleShape),
+        )
+    }
+}
+
+@Composable
+private fun ToolListIcon(modifier: Modifier = Modifier) {
+    val color = MaterialTheme.colorScheme.onBackground
+    Canvas(modifier = modifier.size(width = 28.dp, height = 24.dp)) {
+        val stroke = 2.3.dp.toPx()
+        repeat(3) { index ->
+            val y = (4 + index * 8).dp.toPx()
+            drawLine(color, Offset(0f, y), Offset(size.width, y), stroke)
+        }
+    }
+}
+
+@Composable
+private fun ClipboardIcon(modifier: Modifier = Modifier) {
+    val color = MaterialTheme.colorScheme.primary
+    Canvas(modifier = modifier.size(28.dp)) {
+        val stroke = 1.8.dp.toPx()
+        drawRoundRect(
+            color = color,
+            topLeft = Offset(5.dp.toPx(), 5.dp.toPx()),
+            size = Size(18.dp.toPx(), 20.dp.toPx()),
+            cornerRadius = CornerRadius(3.dp.toPx()),
+            style = Stroke(stroke),
+        )
+        drawRoundRect(
+            color = color,
+            topLeft = Offset(9.dp.toPx(), 2.dp.toPx()),
+            size = Size(10.dp.toPx(), 6.dp.toPx()),
+            cornerRadius = CornerRadius(2.dp.toPx()),
+            style = Stroke(stroke),
+        )
+        repeat(3) { index ->
+            val y = (12 + index * 4).dp.toPx()
+            drawLine(
+                color = color,
+                start = Offset(10.dp.toPx(), y),
+                end = Offset(19.dp.toPx(), y),
+                strokeWidth = stroke,
+            )
         }
     }
 }
@@ -181,12 +416,15 @@ private fun automationStatusText(snapshot: AutomationSnapshot): String = when {
     else -> stringResource(R.string.status_ready_to_start)
 }
 
-@Preview(showBackground = true)
+@Preview(showBackground = true, showSystemUi = true)
 @Composable
 private fun ToolsScreenPreview() {
-    NativeToolsTheme {
+    NativeToolsTheme(darkTheme = false) {
         ToolsScreen(
-            automationSnapshot = AutomationSnapshot(),
+            automationSnapshot = AutomationSnapshot(
+                accessibilityEnabled = true,
+                status = AutomationStatus.IDLE,
+            ),
             onEnableAccessibility = {},
             onStart = {},
             onStop = {},
