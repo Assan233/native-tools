@@ -2,6 +2,7 @@ package com.zyb.nativetools.features.meiyou
 
 import android.accessibilityservice.AccessibilityService
 import android.graphics.Rect
+import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.view.accessibility.AccessibilityEvent
@@ -9,14 +10,12 @@ import android.view.accessibility.AccessibilityNodeInfo
 import android.widget.Toast
 import com.zyb.nativetools.R
 import kotlin.math.abs
-import kotlin.math.roundToInt
 
 class MeiyouAccessibilityService : AccessibilityService() {
     private val handler = Handler(Looper.getMainLooper())
     private var currentStep = AutomationStep.FEEDING_RECORD
     private var activeRunStartedAt = 0L
     private var lastActionAt = 0L
-    private var amountScrollCount = 0
 
     private val processWindow = Runnable { processCurrentWindow() }
 
@@ -35,7 +34,6 @@ class MeiyouAccessibilityService : AccessibilityService() {
             activeRunStartedAt = startedAt
             currentStep = AutomationStep.FEEDING_RECORD
             lastActionAt = 0L
-            amountScrollCount = 0
         }
         val elapsed = System.currentTimeMillis() - startedAt
         if (elapsed >= TIMEOUT_MILLIS) {
@@ -61,7 +59,7 @@ class MeiyouAccessibilityService : AccessibilityService() {
             AutomationStep.FEEDING_RECORD,
             AutomationStep.BOTTLE_BREAST_MILK,
             -> navigate(root)
-            AutomationStep.MILK_AMOUNT -> adjustAmount(root)
+            AutomationStep.MILK_AMOUNT -> inputAmount(root)
         }
     }
 
@@ -101,76 +99,37 @@ class MeiyouAccessibilityService : AccessibilityService() {
         }
     }
 
-    private fun adjustAmount(root: AccessibilityNodeInfo) {
+    private fun inputAmount(root: AccessibilityNodeInfo) {
         val nodes = root.flatten().filter(AccessibilityNodeInfo::isVisibleToUser)
         val amountLabel = nodes.firstOrNull { node ->
             node.nodeLabel()?.let { MeiyouAutomationRules.targetLabel(currentStep, listOf(it)) } != null
         } ?: return
-        val picker = findAmountPicker(amountLabel, nodes) ?: return
-        val currentAmount = picker.currentAmount() ?: return
-
-        val adjustment = MeiyouAutomationRules.amountAdjustment(
-            currentAmount,
-            MeiyouAutomationController.DEFAULT_MILK_ML,
-        )
-        if (adjustment == AmountAdjustment.DONE) {
+        val amountInput = findAmountInput(amountLabel) ?: return
+        val arguments = Bundle().apply {
+            putCharSequence(
+                AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE,
+                MeiyouAutomationController.DEFAULT_MILK_ML.toString(),
+            )
+        }
+        if (amountInput.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, arguments)) {
             finish(AutomationStatus.READY, R.string.automation_ready_toast)
-            return
-        }
-
-        if (amountScrollCount >= MAX_AMOUNT_SCROLLS) return
-        val action = when (adjustment) {
-            AmountAdjustment.SCROLL_FORWARD -> AccessibilityNodeInfo.ACTION_SCROLL_FORWARD
-            AmountAdjustment.SCROLL_BACKWARD -> AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD
-            AmountAdjustment.DONE -> return
-        }
-        if (picker.performAction(action)) {
-            amountScrollCount += 1
-            lastActionAt = System.currentTimeMillis()
-            scheduleProcess(PICKER_SETTLE_MILLIS)
         }
     }
 
-    private fun findAmountPicker(
-        amountLabel: AccessibilityNodeInfo,
-        visibleNodes: List<AccessibilityNodeInfo>,
-    ): AccessibilityNodeInfo? {
+    private fun findAmountInput(amountLabel: AccessibilityNodeInfo): AccessibilityNodeInfo? {
+        if (amountLabel.supportsTextInput()) return amountLabel
+
         var container: AccessibilityNodeInfo? = amountLabel.parent
         repeat(MAX_ANCESTOR_SEARCH_DEPTH) {
-            val localPicker = container
+            val localInput = container
                 ?.flatten()
                 ?.filter(AccessibilityNodeInfo::isVisibleToUser)
-                ?.filter { it.supportsAmountScroll() }
+                ?.filter { it.supportsTextInput() }
                 ?.minByOrNull { it.distanceFrom(amountLabel) }
-            if (localPicker != null) return localPicker
+            if (localInput != null) return localInput
             container = container?.parent
         }
-        return visibleNodes
-            .filter { it.supportsAmountScroll() }
-            .minByOrNull { it.distanceFrom(amountLabel) }
-    }
-
-    private fun AccessibilityNodeInfo.currentAmount(): Int? {
-        rangeInfo?.current?.roundToInt()?.let { return it }
-        nodeLabel()?.let(MeiyouAutomationRules::parseAmount)?.let { return it }
-        flatten()
-            .filter(AccessibilityNodeInfo::isVisibleToUser)
-            .firstOrNull { it.isSelected }
-            ?.nodeLabel()
-            ?.let(MeiyouAutomationRules::parseAmount)
-            ?.let { return it }
-
-        val pickerBounds = Rect().also(::getBoundsInScreen)
-        return flatten()
-            .filter(AccessibilityNodeInfo::isVisibleToUser)
-            .mapNotNull { node ->
-                val value = node.nodeLabel()?.let(MeiyouAutomationRules::parseAmount)
-                    ?: return@mapNotNull null
-                val bounds = Rect().also(node::getBoundsInScreen)
-                value to abs(bounds.centerY() - pickerBounds.centerY())
-            }
-            .minByOrNull { (_, distance) -> distance }
-            ?.first
+        return null
     }
 
     private fun finish(status: AutomationStatus, messageResource: Int) {
@@ -206,11 +165,8 @@ class MeiyouAccessibilityService : AccessibilityService() {
         return false
     }
 
-    private fun AccessibilityNodeInfo.supportsAmountScroll(): Boolean =
-        isScrollable || actionList.any { action ->
-            action.id == AccessibilityNodeInfo.ACTION_SCROLL_FORWARD ||
-                action.id == AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD
-        }
+    private fun AccessibilityNodeInfo.supportsTextInput(): Boolean =
+        isEditable || actionList.any { it.id == AccessibilityNodeInfo.ACTION_SET_TEXT }
 
     private fun AccessibilityNodeInfo.distanceFrom(other: AccessibilityNodeInfo): Int {
         val bounds = Rect().also(::getBoundsInScreen)
@@ -228,9 +184,7 @@ class MeiyouAccessibilityService : AccessibilityService() {
         const val TIMEOUT_MILLIS = 60_000L
         const val CONTENT_SETTLE_MILLIS = 350L
         const val PAGE_LOAD_WAIT_MILLIS = 1_000L
-        const val PICKER_SETTLE_MILLIS = 450L
         const val ACTION_DEBOUNCE_MILLIS = 400L
-        const val MAX_AMOUNT_SCROLLS = 40
         const val MAX_ANCESTOR_SEARCH_DEPTH = 4
     }
 }

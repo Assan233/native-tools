@@ -74,14 +74,46 @@ object MeiyouAutomationController {
     private fun isAccessibilityEnabled(context: Context): Boolean {
         val manager = context.getSystemService(AccessibilityManager::class.java)
         val expectedComponent = ComponentName(context, MeiyouAccessibilityService::class.java)
-        return manager
+        val serviceIsRunning = manager
             .getEnabledAccessibilityServiceList(AccessibilityServiceInfo.FEEDBACK_ALL_MASK)
             .any { service ->
                 val info = service.resolveInfo.serviceInfo
                 ComponentName(info.packageName, info.name) == expectedComponent
             }
+        if (serviceIsRunning) return true
+
+        val enabledServices = Settings.Secure.getString(
+            context.contentResolver,
+            Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES,
+        )
+        return isServiceEnabledInSettings(
+            enabledServices = enabledServices,
+            expectedPackageName = expectedComponent.packageName,
+            expectedClassName = expectedComponent.className,
+        )
     }
 
     private fun preferences(context: Context) =
         context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
+
+    internal fun isServiceEnabledInSettings(
+        enabledServices: String?,
+        expectedPackageName: String,
+        expectedClassName: String,
+    ): Boolean = enabledServices
+        .orEmpty()
+        .split(':')
+        .any { flattenedComponent ->
+            val separatorIndex = flattenedComponent.indexOf('/')
+            if (separatorIndex <= 0) return@any false
+
+            val packageName = flattenedComponent.substring(0, separatorIndex)
+            val declaredClassName = flattenedComponent.substring(separatorIndex + 1)
+            val className = if (declaredClassName.startsWith('.')) {
+                packageName + declaredClassName
+            } else {
+                declaredClassName
+            }
+            packageName == expectedPackageName && className == expectedClassName
+        }
 }

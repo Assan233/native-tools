@@ -41,25 +41,20 @@ class MeiyouAutomationRulesTest {
     }
 
     @Test
-    fun `parses milk amount labels`() {
-        assertEquals(150, MeiyouAutomationRules.parseAmount("150 ml"))
-        assertEquals(90, MeiyouAutomationRules.parseAmount("90毫升"))
-        assertNull(MeiyouAutomationRules.parseAmount("奶量"))
-    }
-
-    @Test
-    fun `chooses scroll direction from current amount`() {
+    fun `matches milk amount input variants`() {
         assertEquals(
-            AmountAdjustment.SCROLL_FORWARD,
-            MeiyouAutomationRules.amountAdjustment(current = 120, target = 150),
+            "输入奶量",
+            MeiyouAutomationRules.targetLabel(
+                AutomationStep.MILK_AMOUNT,
+                listOf("输入奶量"),
+            ),
         )
         assertEquals(
-            AmountAdjustment.SCROLL_BACKWARD,
-            MeiyouAutomationRules.amountAdjustment(current = 180, target = 150),
-        )
-        assertEquals(
-            AmountAdjustment.DONE,
-            MeiyouAutomationRules.amountAdjustment(current = 150, target = 150),
+            "请输入奶量",
+            MeiyouAutomationRules.targetLabel(
+                AutomationStep.MILK_AMOUNT,
+                listOf("请输入奶量"),
+            ),
         )
     }
 }
