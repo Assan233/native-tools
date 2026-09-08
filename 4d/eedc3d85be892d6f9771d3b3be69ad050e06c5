@@ -1,0 +1,28 @@
+app/src/main/res/values/colors.xml
+  s_af01dc23f72294::t_67f8d4b26d353e 1-4
+app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
+  s_af01dc23f72294::t_67f8d4b26d353e 1-5
+app/src/main/AndroidManifest.xml
+  s_af01dc23f72294::t_67f8d4b26d353e 10,12
+app/src/main/res/drawable/ic_launcher_foreground.xml
+  s_af01dc23f72294::t_67f8d4b26d353e 1-9,12-40
+  s_af01dc23f72294::t_cec807ab99e055 10-11
+app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
+  s_af01dc23f72294::t_67f8d4b26d353e 1-5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "4deedc3d85be892d6f9771d3b3be69ad050e06c5",
+  "prompts": {},
+  "sessions": {
+    "s_af01dc23f72294": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f852aa9dbffetHTEfjUMWqd2Io",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "caorongsen <caorongsen@zuoyebang.com>"
+    }
+  }
+}
