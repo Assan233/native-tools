@@ -51,32 +51,48 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.zyb.nativetools.features.dingtalk.DingTalkAutomationController
+import com.zyb.nativetools.features.dingtalk.DingTalkAutomationSnapshot
+import com.zyb.nativetools.features.dingtalk.DingTalkAutomationStatus
 import com.zyb.nativetools.features.meiyou.AutomationSnapshot
 import com.zyb.nativetools.features.meiyou.AutomationStatus
 import com.zyb.nativetools.features.meiyou.MeiyouAutomationController
 import com.zyb.nativetools.ui.theme.NativeToolsTheme
 
 class MainActivity : ComponentActivity() {
-    private var automationSnapshot by mutableStateOf(AutomationSnapshot())
+    private var meiyouSnapshot by mutableStateOf(AutomationSnapshot())
+    private var dingTalkSnapshot by mutableStateOf(DingTalkAutomationSnapshot())
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        automationSnapshot = MeiyouAutomationController.snapshot(this)
+        refreshSnapshots()
         setContent {
             NativeToolsTheme {
                 ToolsScreen(
-                    automationSnapshot = automationSnapshot,
-                    onEnableAccessibility = {
+                    meiyouSnapshot = meiyouSnapshot,
+                    dingTalkSnapshot = dingTalkSnapshot,
+                    onEnableMeiyouAccessibility = {
                         MeiyouAutomationController.openAccessibilitySettings(this)
                     },
-                    onStart = {
+                    onStartMeiyou = {
                         MeiyouAutomationController.start(this)
-                        automationSnapshot = MeiyouAutomationController.snapshot(this)
+                        refreshSnapshots()
                     },
-                    onStop = {
+                    onStopMeiyou = {
                         MeiyouAutomationController.stop(this)
-                        automationSnapshot = MeiyouAutomationController.snapshot(this)
+                        refreshSnapshots()
+                    },
+                    onEnableDingTalkAccessibility = {
+                        DingTalkAutomationController.openAccessibilitySettings(this)
+                    },
+                    onStartDingTalk = {
+                        DingTalkAutomationController.start(this)
+                        refreshSnapshots()
+                    },
+                    onStopDingTalk = {
+                        DingTalkAutomationController.stop(this)
+                        refreshSnapshots()
                     },
                 )
             }
@@ -85,16 +101,25 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
-        automationSnapshot = MeiyouAutomationController.snapshot(this)
+        refreshSnapshots()
+    }
+
+    private fun refreshSnapshots() {
+        meiyouSnapshot = MeiyouAutomationController.snapshot(this)
+        dingTalkSnapshot = DingTalkAutomationController.snapshot(this)
     }
 }
 
 @Composable
 private fun ToolsScreen(
-    automationSnapshot: AutomationSnapshot,
-    onEnableAccessibility: () -> Unit,
-    onStart: () -> Unit,
-    onStop: () -> Unit,
+    meiyouSnapshot: AutomationSnapshot,
+    dingTalkSnapshot: DingTalkAutomationSnapshot,
+    onEnableMeiyouAccessibility: () -> Unit,
+    onStartMeiyou: () -> Unit,
+    onStopMeiyou: () -> Unit,
+    onEnableDingTalkAccessibility: () -> Unit,
+    onStartDingTalk: () -> Unit,
+    onStopDingTalk: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val background = MaterialTheme.colorScheme.background
@@ -137,10 +162,17 @@ private fun ToolsScreen(
             Spacer(Modifier.height(30.dp))
 
             MeiyouToolCard(
-                snapshot = automationSnapshot,
-                onEnableAccessibility = onEnableAccessibility,
-                onStart = onStart,
-                onStop = onStop,
+                snapshot = meiyouSnapshot,
+                onEnableAccessibility = onEnableMeiyouAccessibility,
+                onStart = onStartMeiyou,
+                onStop = onStopMeiyou,
+            )
+            Spacer(Modifier.height(18.dp))
+            DingTalkToolCard(
+                snapshot = dingTalkSnapshot,
+                onEnableAccessibility = onEnableDingTalkAccessibility,
+                onStart = onStartDingTalk,
+                onStop = onStopDingTalk,
             )
 
             Row(
@@ -162,6 +194,115 @@ private fun ToolsScreen(
                 )
             }
             Spacer(Modifier.height(12.dp))
+        }
+    }
+}
+
+@Composable
+private fun DingTalkToolCard(
+    snapshot: DingTalkAutomationSnapshot,
+    onEnableAccessibility: () -> Unit,
+    onStart: () -> Unit,
+    onStop: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    ElevatedCard(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = MaterialTheme.colorScheme.surface,
+        ),
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 5.dp),
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            Row(verticalAlignment = Alignment.Top) {
+                Box(
+                    modifier = Modifier
+                        .size(52.dp)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(MaterialTheme.colorScheme.primaryContainer),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    ClipboardIcon()
+                }
+                Spacer(Modifier.width(14.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = stringResource(R.string.tool_automation_label),
+                        color = MaterialTheme.colorScheme.primary,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Spacer(Modifier.height(3.dp))
+                    Text(
+                        text = stringResource(R.string.dingtalk_title),
+                        color = MaterialTheme.colorScheme.onSurface,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(18.dp))
+            Text(
+                text = stringResource(R.string.dingtalk_description),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodyMedium,
+                lineHeight = 21.sp,
+            )
+            Spacer(Modifier.height(18.dp))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            Spacer(Modifier.height(16.dp))
+
+            Row(modifier = Modifier.fillMaxWidth()) {
+                ToolMetric(
+                    label = stringResource(R.string.dingtalk_path_label),
+                    value = stringResource(R.string.dingtalk_path_value),
+                    modifier = Modifier.weight(1f),
+                )
+                ToolMetric(
+                    label = stringResource(R.string.dingtalk_action_label),
+                    value = stringResource(R.string.dingtalk_action_value),
+                    modifier = Modifier.weight(1f),
+                )
+            }
+
+            Spacer(Modifier.height(18.dp))
+            DingTalkStatusLine(snapshot)
+            Spacer(Modifier.height(18.dp))
+
+            when {
+                !snapshot.accessibilityEnabled -> {
+                    PrimaryActionButton(
+                        text = stringResource(R.string.enable_accessibility),
+                        onClick = onEnableAccessibility,
+                    )
+                    Spacer(Modifier.height(10.dp))
+                    Text(
+                        text = stringResource(R.string.dingtalk_accessibility_explanation),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodySmall,
+                        lineHeight = 18.sp,
+                    )
+                }
+
+                snapshot.status == DingTalkAutomationStatus.RUNNING -> {
+                    OutlinedButton(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(52.dp),
+                        onClick = onStop,
+                        shape = RoundedCornerShape(10.dp),
+                    ) {
+                        Text(stringResource(R.string.stop_automation))
+                    }
+                }
+
+                else -> PrimaryActionButton(
+                    text = stringResource(R.string.start_dingtalk_punch),
+                    onClick = onStart,
+                )
+            }
         }
     }
 }
@@ -323,6 +464,31 @@ private fun StatusLine(snapshot: AutomationSnapshot) {
 }
 
 @Composable
+private fun DingTalkStatusLine(snapshot: DingTalkAutomationSnapshot) {
+    val statusColor = when {
+        !snapshot.accessibilityEnabled -> MaterialTheme.colorScheme.tertiary
+        snapshot.status == DingTalkAutomationStatus.APP_NOT_INSTALLED -> MaterialTheme.colorScheme.error
+        snapshot.status == DingTalkAutomationStatus.PAGE_NOT_FOUND -> MaterialTheme.colorScheme.error
+        snapshot.status == DingTalkAutomationStatus.STOPPED -> MaterialTheme.colorScheme.onSurfaceVariant
+        else -> MaterialTheme.colorScheme.primary
+    }
+
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            modifier = Modifier
+                .size(8.dp)
+                .background(statusColor, CircleShape),
+        )
+        Spacer(Modifier.width(9.dp))
+        Text(
+            text = dingTalkAutomationStatusText(snapshot),
+            color = statusColor,
+            style = MaterialTheme.typography.labelLarge,
+        )
+    }
+}
+
+@Composable
 private fun PrimaryActionButton(
     text: String,
     onClick: () -> Unit,
@@ -416,18 +582,36 @@ private fun automationStatusText(snapshot: AutomationSnapshot): String = when {
     else -> stringResource(R.string.status_ready_to_start)
 }
 
+@Composable
+private fun dingTalkAutomationStatusText(snapshot: DingTalkAutomationSnapshot): String = when {
+    !snapshot.accessibilityEnabled -> stringResource(R.string.dingtalk_status_permission_required)
+    snapshot.status == DingTalkAutomationStatus.RUNNING -> stringResource(R.string.dingtalk_status_running)
+    snapshot.status == DingTalkAutomationStatus.COMPLETED -> stringResource(R.string.dingtalk_status_completed)
+    snapshot.status == DingTalkAutomationStatus.APP_NOT_INSTALLED -> stringResource(R.string.dingtalk_status_app_missing)
+    snapshot.status == DingTalkAutomationStatus.PAGE_NOT_FOUND -> stringResource(R.string.dingtalk_status_page_not_found)
+    snapshot.status == DingTalkAutomationStatus.STOPPED -> stringResource(R.string.dingtalk_status_stopped)
+    else -> stringResource(R.string.dingtalk_status_ready)
+}
+
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 private fun ToolsScreenPreview() {
     NativeToolsTheme(darkTheme = false) {
         ToolsScreen(
-            automationSnapshot = AutomationSnapshot(
+            meiyouSnapshot = AutomationSnapshot(
                 accessibilityEnabled = true,
                 status = AutomationStatus.IDLE,
             ),
-            onEnableAccessibility = {},
-            onStart = {},
-            onStop = {},
+            dingTalkSnapshot = DingTalkAutomationSnapshot(
+                accessibilityEnabled = true,
+                status = DingTalkAutomationStatus.IDLE,
+            ),
+            onEnableMeiyouAccessibility = {},
+            onStartMeiyou = {},
+            onStopMeiyou = {},
+            onEnableDingTalkAccessibility = {},
+            onStartDingTalk = {},
+            onStopDingTalk = {},
         )
     }
 }

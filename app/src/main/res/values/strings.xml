@@ -1,7 +1,7 @@
 <resources>
     <string name="app_name">Native Tools</string>
     <string name="home_title">工具列表</string>
-    <string name="home_subtitle">1 个可用工具</string>
+    <string name="home_subtitle">2 个可用工具</string>
     <string name="tool_automation_label">自动化</string>
     <string name="meiyou_title">美柚瓶喂母乳</string>
     <string name="meiyou_description">打开美柚，进入瓶喂母乳记录并填写奶量。完成后由你确认保存。</string>
@@ -25,4 +25,23 @@
     <string name="accessibility_service_description">仅在你主动启动后，打开美柚并填写瓶喂母乳 150 ml；不会自动保存记录。</string>
     <string name="automation_ready_toast">已填写 150 ml，请确认后保存</string>
     <string name="automation_page_not_found_toast">未识别到美柚目标页面，自动化已停止</string>
+    <string name="dingtalk_title">钉钉自动打卡</string>
+    <string name="dingtalk_description">打开钉钉，依次进入工作台和考勤打卡，并点击打卡按钮。</string>
+    <string name="dingtalk_path_label">操作路径</string>
+    <string name="dingtalk_path_value">工作台 → 考勤打卡</string>
+    <string name="dingtalk_action_label">最终操作</string>
+    <string name="dingtalk_action_value">点击打卡</string>
+    <string name="start_dingtalk_punch">开始自动打卡</string>
+    <string name="dingtalk_accessibility_explanation">需要在系统设置中单独开启“钉钉自动打卡”。服务仅能读取和操作钉钉界面，可随时关闭。</string>
+    <string name="dingtalk_status_permission_required">需要开启钉钉自动化权限</string>
+    <string name="dingtalk_status_running">正在打开钉钉并进入考勤打卡…</string>
+    <string name="dingtalk_status_completed">已点击打卡，请在钉钉中核对结果</string>
+    <string name="dingtalk_status_app_missing">未找到钉钉，请先安装钉钉 App</string>
+    <string name="dingtalk_status_page_not_found">未识别到目标页面，已安全停止</string>
+    <string name="dingtalk_status_stopped">自动打卡已停止</string>
+    <string name="dingtalk_status_ready">权限已开启，可以开始打卡</string>
+    <string name="dingtalk_accessibility_service_label">钉钉自动打卡</string>
+    <string name="dingtalk_accessibility_service_description">仅在你主动启动后，打开钉钉并依次点击工作台、考勤打卡和打卡按钮。</string>
+    <string name="dingtalk_completed_toast">已点击打卡，请核对钉钉中的打卡结果</string>
+    <string name="dingtalk_page_not_found_toast">未识别到钉钉目标页面，自动打卡已停止</string>
 </resources>
